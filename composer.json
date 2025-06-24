@@ -1,0 +1,24 @@
+{
+  "name": "tcoders/key-value-impoter",
+  "description": "Reusable Laravel import functionality",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Company\\PackageB\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "TCoders\\KeyValueImporter\\ImportServiceProvider"
+      ]
+    }
+  },
+  "require": {
+    "php": "^7.2",
+    "illuminate/support": "^7.0"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
