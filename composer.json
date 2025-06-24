@@ -1,5 +1,5 @@
 {
-  "name": "tcoders/key-value-impoter",
+  "name": "tcoders/key-value-importer",
   "description": "Reusable Laravel import functionality",
   "type": "library",
   "license": "MIT",
