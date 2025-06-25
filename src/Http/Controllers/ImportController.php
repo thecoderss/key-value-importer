@@ -1,6 +1,6 @@
 <?php
 
-namespace Company\PackageB\Http\Controllers;
+namespace TCoders\KeyValueImporter\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\File;
 
 class ImportController extends Controller
 {
-    public function showImportForm($target)
+    public function showImportForm($target='key-value')
     {
         return view('importer::import-form', compact('target'));
     }
@@ -22,12 +22,29 @@ class ImportController extends Controller
 
         $collection = Excel::toCollection(null, $request->file('import_file'))->first();
 
-        $data = [];
+        if ($collection->isEmpty()) {
+            return redirect()->back()->with('error', 'The import file is empty.');
+        }
+
+        $header = $collection->first(); // First row is header
+        $collection->shift(); // Remove header row from data
+
+        if (count($header) < 3 || strtolower(trim($header[0])) !== 'personalities') {
+            return redirect()->back()->with('error', 'Header must start with "personalities", followed by other keys.');
+        }
+
+        $result = [];
 
         foreach ($collection as $row) {
-            if (isset($row[0], $row[1])) {
-                $data[$row[0]] = $row[1];
+            $tag = trim($row[0] ?? '');
+
+            if (!$tag) {
+                continue; // Skip if tag is empty
             }
+
+            $result[$tag] = [];
+            $result[$tag]['summary'] = $row[1];
+            $result[$tag]['description'] = $row[2];
         }
 
         $filePath = config('importer.storage_path') . "/{$target}.php";
@@ -36,12 +53,12 @@ class ImportController extends Controller
             File::makeDirectory(dirname($filePath), 0755, true);
         }
 
-        File::put($filePath, "<?php\n\nreturn " . var_export($data, true) . ";\n");
+        File::put($filePath, "<?php\n\nreturn " . var_export($result, true) . ";\n");
 
         if (config('importer.cache_enabled')) {
             cache()->forget(config('importer.cache_prefix') . $target);
         }
 
-        return redirect()->back()->with('success', 'Import completed.');
+        return redirect()->url('/');
     }
 }

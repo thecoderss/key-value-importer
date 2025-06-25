@@ -2,7 +2,9 @@
 
 namespace TCoders\KeyValueImporter;
 
-class ImportServiceProvider {
+use Illuminate\Support\ServiceProvider;
+
+class ImportServiceProvider extends ServiceProvider {
     public function boot()
     {
         $this->publishes([
