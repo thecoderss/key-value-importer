@@ -59,6 +59,6 @@ class ImportController extends Controller
             cache()->forget(config('importer.cache_prefix') . $target);
         }
 
-        return redirect()->url('/');
+        return redirect()->to('/');
     }
 }
