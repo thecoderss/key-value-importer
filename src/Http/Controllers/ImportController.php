@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 
 class ImportController extends Controller
 {
@@ -52,11 +53,14 @@ class ImportController extends Controller
         if (!File::exists(dirname($filePath))) {
             File::makeDirectory(dirname($filePath), 0755, true);
         }
+        Cache::rememberForever(config('importer.cache_prefix'), function () use ($result) {
+            return $result;
+        });
 
         File::put($filePath, "<?php\n\nreturn " . var_export($result, true) . ";\n");
 
         if (config('importer.cache_enabled')) {
-            cache()->forget(config('importer.cache_prefix') . $target);
+            Cache::forget(config('importer.cache_prefix') . $target);
         }
 
         return redirect()->to('/');
