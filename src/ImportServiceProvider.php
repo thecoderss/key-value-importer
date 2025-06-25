@@ -1,6 +1,6 @@
 <?php
 
-namespace TCoders\KeyValueImpoter;
+namespace TCoders\KeyValueImporter;
 
 class ImportServiceProvider {
     public function boot()
