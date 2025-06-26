@@ -53,7 +53,7 @@ class ImportController extends Controller
         if (!File::exists(dirname($filePath))) {
             File::makeDirectory(dirname($filePath), 0755, true);
         }
-        Cache::rememberForever(config('importer.cache_prefix'), function () use ($result) {
+        Cache::rememberForever(config('importer.cache_prefix'.$target), function () use ($result) {
             return $result;
         });
 
