@@ -2,11 +2,13 @@
 
 namespace TCoders\KeyValueImporter\Http\Controllers;
 
+use App\Models\File as DbFile;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class ImportController extends Controller
 {
@@ -20,8 +22,8 @@ class ImportController extends Controller
         $request->validate([
             'import_file' => 'required|file|mimes:xlsx,csv,txt',
         ]);
-
-        $collection = Excel::toCollection(null, $request->file('import_file'))->first();
+        $file = $request->file('import_file');
+        $collection = Excel::toCollection(null, $file)->first();
 
         if ($collection->isEmpty()) {
             return redirect()->back()->with('error', 'The import file is empty.');
@@ -33,7 +35,17 @@ class ImportController extends Controller
         if (count($header) < 3 || strtolower(trim($header[0])) !== 'personalities') {
             return redirect()->back()->with('error', 'Header must start with "personalities", followed by other keys.');
         }
-
+        $normalizedKeys = collect($header)->map(function ($key) {
+            return trim($key);
+        })->filter(function ($key) {
+            return strpos($key, '!') === false; // Exclude keys with '!'
+        })->map(function ($key) {
+            return strtolower(str_replace(' ', '-', $key));
+        })->values()->toArray(); 
+        
+        $validIndexes = collect($header)->keys()->filter(function ($index) use ($header) {
+            return strpos($header[$index], '!') === false;
+        })->values()->toArray();
         $result = [];
 
         foreach ($collection as $row) {
@@ -44,25 +56,20 @@ class ImportController extends Controller
             }
 
             $result[$tag] = [];
-            $result[$tag]['summary'] = $row[1];
-            $result[$tag]['description'] = $row[2];
+
+            foreach ($validIndexes as $i => $originalIndex) {
+                $key = $normalizedKeys[$i];
+                $result[$tag][$key] = $row[$originalIndex] ?? null;
+            }
+
         }
 
-        $filePath = config('importer.storage_path') . "/{$target}.php";
-
-        if (!File::exists(dirname($filePath))) {
-            File::makeDirectory(dirname($filePath), 0755, true);
-        }
-        Cache::rememberForever(config('importer.cache_prefix'.$target), function () use ($result) {
-            return $result;
-        });
-
-        File::put($filePath, "<?php\n\nreturn " . var_export($result, true) . ";\n");
-
-        if (config('importer.cache_enabled')) {
-            Cache::forget(config('importer.cache_prefix') . $target);
-        }
-
+        $store = Storage::disk('s3')->put("imports/{$target}.json", json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        DbFile::insert([
+            'name' => $file->getClientOriginalName(),    
+            'tag' => $request->tag ?: 'upload',    
+            'path' => $store,
+        ]);
         return redirect()->to('/');
     }
 }
